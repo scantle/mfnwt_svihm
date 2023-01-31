@@ -960,6 +960,8 @@ C
         END IF
       END DO
       end if
+C Setup SFR EPI
+      CALL INIT_SFREPI()
 C
 C23-----SAVE POINTERS FOR GRID AND RETURN.
       CALL SGWF2SFR7PSV(Igrid)
@@ -8545,6 +8547,30 @@ C
 C8------RETURN.
       RETURN
       END SUBROUTINE MODSIM2SFR
+      
+C Subroutine to fill SFR external package interface (EPI)
+      SUBROUTINE INIT_SFREPI()
+      USE GWFSFRMODULE, ONLY: SFREPI, NSS, NSTRM, ISEG, ISTRM
+      implicit none
+      
+      integer :: i,j
+      
+      ! Allocate segment map
+      allocate(SFREPI%seg(NSS))
+      
+      ! Allocate inner reach map
+      do i=1, NSS
+        allocate(SFREPI%seg(i)%rch_index(ISEG(4,i)))
+      end do
+      
+      ! Loop over reaches filling indeces
+      do i=1, NSTRM
+        SFREPI%seg(ISTRM(4,i))%rch_index(ISTRM(5,i)) = i
+        ! TODO - do we need error handling?? Should already
+        ! be clean from SFR read...
+      end do
+      
+      END SUBROUTINE INIT_SFREPI
 C
 C-------SUBROUTINE GWF2SFR7DA
       SUBROUTINE GWF2SFR7DA(IGRID)

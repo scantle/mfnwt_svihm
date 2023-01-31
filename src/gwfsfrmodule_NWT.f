@@ -98,5 +98,13 @@ C        INTEGER,SAVE,                 POINTER:: NFLOWTYPE          !edm
         REAL,                 DIMENSION(:),  POINTER:: DEMAND,SUPACT
         REAL,                 DIMENSION(:),  POINTER:: ACTUAL
       END TYPE
+C     Additional types to setup EPI (External Package Interface)
+      TYPE sfr_seg_map
+        integer, allocatable  :: rch_index(:)
+      END TYPE
+      TYPE sfr_map
+        type(sfr_seg_map), allocatable :: seg(:)
+      END TYPE
       TYPE(GWFSFRTYPE), SAVE:: GWFSFRDAT(10)
+      TYPE(sfr_map), save :: SFREPI
       END MODULE GWFSFRMODULE
