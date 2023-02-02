@@ -3,6 +3,7 @@
         INTEGER,SAVE,POINTER  ::NPDRN,IDRNPB,NNPDRN
         CHARACTER(LEN=16),SAVE, DIMENSION(:),   POINTER     ::DRNAUX
         REAL,             SAVE, DIMENSION(:,:), POINTER     ::DRAI
+        INTEGER,          SAVE, DIMENSION(:),   POINTER     ::IDRNSTRM
       TYPE GWFDRNOTYPE
         INTEGER,POINTER  ::NDRAIN,MXDRN,NDRNVL,IDRNCB,IPRDRN
         INTEGER,POINTER  ::NPDRN,IDRNPB,NNPDRN
@@ -23,7 +24,7 @@ C     SPECIFICATIONS:
 C     ------------------------------------------------------------------
       USE GLOBAL,       ONLY:IOUT,NCOL,NROW,NLAY,IFREFM
       USE GWFDRNOMODULE, ONLY:NDRAIN,MXDRN,NDRNVL,IDRNCB,IPRDRN,NPDRN,
-     1                       IDRNPB,NNPDRN,DRNAUX,DRAI
+     1                       IDRNPB,NNPDRN,DRNAUX,DRAI,IDRNSTRM
       CHARACTER*200 LINE
 C     ------------------------------------------------------------------
       ALLOCATE(NDRAIN,MXDRN,NDRNVL,IDRNCB,IPRDRN)
@@ -86,6 +87,7 @@ C4------ALLOCATE SPACE FOR DRAIN ARRAYs.
       IDRNPB=MXACTD+1
       MXDRN=MXACTD+MXPD
       ALLOCATE (DRAI(NDRNVL,MXDRN))
+      ALLOCATE (IDRNSTRM(MXDRN))
 C
 C5------READ NAMED PARAMETERS.
       WRITE(IOUT,1000) NPDRN
@@ -122,7 +124,7 @@ C6------RETURN
       CALL SGWF2DRNO1PSV(IGRID)
       RETURN
       END
-      SUBROUTINE GWF2DRNO1RP(IN,IGRID)
+      SUBROUTINE GWF2DRNO1RP(IN,Iunitsfr,IGRID)
 C     ******************************************************************
 C     READ DRAIN HEAD, CONDUCTANCE AND BOTTOM ELEVATION
 C     ******************************************************************
@@ -132,7 +134,9 @@ C     ------------------------------------------------------------------
       USE GLOBAL,       ONLY:IOUT,NCOL,NROW,NLAY,IFREFM,BOTM,LBOTM,
      1                       IBOUND
       USE GWFDRNOMODULE, ONLY:NDRAIN,MXDRN,NDRNVL,IPRDRN,NPDRN,
-     1                       IDRNPB,NNPDRN,DRNAUX,DRAI
+     1                       IDRNPB,NNPDRN,DRNAUX,DRAI,IDRNSTRM
+      USE GWFSFRMODULE, ONLY:NSS,ISEG,SFREPI
+      INTEGER Iunitsfr
 C     ------------------------------------------------------------------
       CALL SGWF2DRNO1PNT(IGRID)
 C
@@ -206,6 +210,21 @@ C5------GET COLUMN, ROW AND LAYER OF CELL CONTAINING DRAIN.
       IL=DRAI(1,L)
       IR=DRAI(2,L)
       IC=DRAI(3,L)
+C5a-----Record the reach id, used to move water to SFR STRM array
+      IF (Iunitsfr.GT.0) THEN ! SFR active
+        ! Check input
+        IF (DRAI(6,L) > NSS) THEN  ! Segment # check
+          WRITE(IOUT,104)IC,IR,IL
+          CALL USTOP(' ')
+        ELSE IF (DRAI(7,L) > ISEG(4,DRAI(6,L))) THEN  ! Reach # check
+          WRITE(IOUT,105)IC,IR,IL
+          CALL USTOP(' ')
+        END IF
+        ! Valid SFR Seg-Reach
+        IDRNSTRM(L) = SFREPI%seg(DRAI(6,L))%rch_index(DRAI(7,L))
+      ELSE
+        IDRNSTRM(L) = 0
+      END IF
 C
 C6-------IF THE CELL IS EXTERNAL SKIP IT.
       IF(IBOUND(IC,IR,IL).LE.0) GO TO 102
@@ -216,6 +235,10 @@ C6-------IF THE CELL IS EXTERNAL SKIP IT.
         CALL USTOP(' ')
       END IF
   103 FORMAT('DRNO SET TO BELOW CELL BOTTOM. MODEL STOPPING. ',
+     +                'CELL WITH ERROR (IC,IR,IL): ',3I5)
+  104 FORMAT('DRNO SET TO INVALID SFR STAGE. MODEL STOPPING. ',
+     +                'CELL WITH ERROR (IC,IR,IL): ',3I5)
+  105 FORMAT('DRNO SET TO INVALID SFR REACH. MODEL STOPPING. ',
      +                'CELL WITH ERROR (IC,IR,IL): ',3I5)
   102 CONTINUE
 C
