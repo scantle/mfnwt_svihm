@@ -93,7 +93,6 @@ StyleCopReport.xml
 *.scc
 *.exp
 *.lib
-*.u2d
 
 # Chutzpah Test files
 _Chutzpah*
@@ -350,3 +349,5 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+*.u2d
