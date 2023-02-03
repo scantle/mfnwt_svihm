@@ -219,9 +219,13 @@ C5a-----Record the reach id, used to move water to SFR STRM array
         ELSE IF (DRAI(7,L) > ISEG(4,DRAI(6,L))) THEN  ! Reach # check
           WRITE(IOUT,105)IC,IR,IL
           CALL USTOP(' ')
+        ELSE IF (DRAI(6,L).GT.0.AND.DRAI(7,L).GT.0) THEN
+          ! Valid SFR Seg-Reach
+          IDRNSTRM(L) = SFREPI%seg(DRAI(6,L))%rch_index(DRAI(7,L))
+        ELSE
+          ! Zero & negative values of seg & rch ignored
+          IDRNSTRM(L) = 0
         END IF
-        ! Valid SFR Seg-Reach
-        IDRNSTRM(L) = SFREPI%seg(DRAI(6,L))%rch_index(DRAI(7,L))
       ELSE
         IDRNSTRM(L) = 0
       END IF
@@ -245,7 +249,7 @@ C
 C8------RETURN.
   260 RETURN
       END
-      SUBROUTINE GWF2DRNO1FM(IGRID)
+      SUBROUTINE GWF2DRNO1FM(IGRID,Iunitsfr)
 C     ******************************************************************
 C     ADD DRAIN FLOW TO SOURCE TERM
 C     ******************************************************************
@@ -253,14 +257,21 @@ C
 C        SPECIFICATIONS:
 C     ------------------------------------------------------------------
       USE GLOBAL,       ONLY:IBOUND,HNEW,RHS,HCOF
-      USE GWFDRNOMODULE, ONLY:NDRAIN,DRAI
+      USE GWFDRNOMODULE, ONLY:NDRAIN,DRAI,IDRNSTRM
+      USE GWFSFRMODULE, ONLY:STRM
 C
       DOUBLE PRECISION EEL
+      INTEGER Iunitsfr
 C     ------------------------------------------------------------------
       CALL SGWF2DRNO1PNT(IGRID)
 C
 C1------IF NDRAIN<=0 THERE ARE NO DRAINS. RETURN.
       IF(NDRAIN.LE.0) RETURN
+C1b-----IF SFR is active, zero out the Runoff slot
+! UZF also zeroes, making the packages incompatible
+      IF ( Iunitsfr.GT.0 ) THEN 
+        STRM(24,:) = 0.0
+      END IF
 C
 C2------PROCESS EACH CELL IN THE DRAIN LIST.
       DO 100 L=1,NDRAIN
@@ -284,6 +295,11 @@ C7------HEAD IS HIGHER THAN DRAIN. ADD TERMS TO RHS AND HCOF.
       C=DRAI(5,L)
       HCOF(IC,IR,IL)=HCOF(IC,IR,IL)-C
       RHS(IC,IR,IL)=RHS(IC,IR,IL)-C*EL
+C7b-----ADD FLOW TO SFR, Q=C*(HHNEW-EEL)
+      IF (IDRNSTRM(L).GT.0) THEN
+        SL=IDRNSTRM(L)
+        STRM(24,SL) = STRM(24,SL) + C * (HNEW(IC,IR,IL) - EEL)
+      END IF
   100 CONTINUE
 C
 C8------RETURN.
