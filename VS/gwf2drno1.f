@@ -256,12 +256,12 @@ C     ******************************************************************
 C
 C        SPECIFICATIONS:
 C     ------------------------------------------------------------------
-      USE GLOBAL,       ONLY:IBOUND,HNEW,RHS,HCOF
+      USE GLOBAL,       ONLY:IOUT,IBOUND,HNEW,RHS,HCOF
       USE GWFDRNOMODULE, ONLY:NDRAIN,DRAI,IDRNSTRM
       USE GWFSFRMODULE, ONLY:STRM
 C
       DOUBLE PRECISION EEL
-      INTEGER Iunitsfr
+      INTEGER Iunitsfr, SL
 C     ------------------------------------------------------------------
       CALL SGWF2DRNO1PNT(IGRID)
 C
@@ -298,7 +298,7 @@ C7------HEAD IS HIGHER THAN DRAIN. ADD TERMS TO RHS AND HCOF.
 C7b-----ADD FLOW TO SFR, Q=C*(HHNEW-EEL)
       IF (IDRNSTRM(L).GT.0) THEN
         SL=IDRNSTRM(L)
-        STRM(24,SL) = STRM(24,SL) + C * (HNEW(IC,IR,IL) - EEL)
+        STRM(24,SL) = STRM(24,SL) + C * HNEW(IC,IR,IL) - C * EEL
       END IF
   100 CONTINUE
 C
@@ -316,10 +316,11 @@ C     ------------------------------------------------------------------
      1                      botm, lbotm
       USE GWFBASMODULE,ONLY:MSUM,ICBCFL,IAUXSV,DELT,PERTIM,TOTIM,
      1                      VBVL,VBNM
-      USE GWFDRNOMODULE,ONLY:NDRAIN,IDRNCB,DRAI,NDRNVL,DRNAUX
+      USE GWFDRNOMODULE,ONLY:NDRAIN,IDRNCB,DRAI,NDRNVL,DRNAUX,IDRNSTRM
+      USE GWFSFRMODULE, ONLY:STRM
 C
       CHARACTER*16 TEXT
-      DOUBLE PRECISION HHNEW,EEL,CCDRN,CEL,RATOUT,QQ
+      DOUBLE PRECISION HHNEW,EEL,CCDRN,CEL,RATOUT,QQ,SFROUT,QT
 C
       DATA TEXT /'     DRNO DRAINS'/
 C     ------------------------------------------------------------------
@@ -333,6 +334,7 @@ C1------ACCUMULATOR (RATOUT).
       IF(IDRNCB.LT.0 .AND. ICBCFL.NE.0) IBD=-1
       IF(IDRNCB.GT.0) IBD=ICBCFL
       IBDLBL=0
+      SFROUT=ZERO
 C
 C2------IF CELL-BY-CELL FLOWS WILL BE SAVED AS A LIST, WRITE HEADER.
       IF(IBD.EQ.2) THEN
@@ -378,6 +380,10 @@ C5D-----SUBTRACT Q FROM RATOUT.
          QQ=CEL - CCDRN*HHNEW
          Q=QQ
          RATOUT=RATOUT-QQ
+         IF (IDRNSTRM(L).GT.0) THEN
+          QT = C * HNEW(IC,IR,IL) - C * EEL
+          SFROUT = SFROUT+QT
+         END IF
       END IF
 C
 C5E-----PRINT THE INDIVIDUAL RATES IF REQUESTED(IDRNCB<0).
@@ -399,6 +405,11 @@ C5G-----COPY FLOW TO DRAI.
      1                  DRAI(:,L),NDRNVL,NAUX,6,IBOUND,NLAY)
       DRAI(NDRNVL,L)=Q
   100 CONTINUE
+C
+C5.5----Write out Drain-SFR water balance (only for debug?)
+C      WRITE(IOUT,63) SFROUT, SUM(STRM(24,:)), SFROUT - SUM(STRM(24,:))
+C   63 FORMAT(1X,/1X,'DRAINO BUDGET    DRAINO OUT ',1PG15.6,
+C     &'   SFR RUNOFF IN ',1PG15.6, '   ERROR ',1PG15.6)
 C
 C6------IF CELL-BY-CELL FLOW WILL BE SAVED AS A 3-D ARRAY,
 C6------CALL UBUDSV TO SAVE THEM.
@@ -433,6 +444,7 @@ C
         DEALLOCATE(NNPDRN)
         DEALLOCATE(DRNAUX)
         DEALLOCATE(DRAI)
+        DEALLOCATE(IDRNSTRM)
 C
       RETURN
       END
