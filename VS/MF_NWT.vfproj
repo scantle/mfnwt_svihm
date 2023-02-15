@@ -54,7 +54,7 @@
 		<File RelativePath="..\src\gwf2bcf7.f"/>
 		<File RelativePath="..\src\gwf2chd7.f"/>
 		<File RelativePath="..\src\gwf2drn7_NWT.f"/>
-		<File RelativePath=".\gwf2drno1.f"/>
+		<File RelativePath="..\src\gwf2drno1.f"/>
 		<File RelativePath="..\src\gwf2drt7.f"/>
 		<File RelativePath="..\src\gwf2ets7.f"/>
 		<File RelativePath="..\src\gwf2evt7.f"/>
